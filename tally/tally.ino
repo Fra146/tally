@@ -95,6 +95,7 @@ WebServer server(80);
 ESP8266WebServer server(80);
 #endif
 
+
 ATEMmin atemSwitcher;
 
 TallyServer tallyServer;
@@ -118,8 +119,23 @@ struct Settings {
     uint8_t ledBrightness;
 };
 
-Settings settings;
 
+#ifdef ESP8266
+uint32_t chipID = ESP.getChipId();
+const String chipIDString = String(chipID);
+#endif
+
+#ifdef ESP32
+ 
+uint64_t macAddress = ESP.getEfuseMac();
+uint64_t macAddressTrunc = macAddress << 40;
+uint32_t _chipID = macAddressTrunc >> 40;
+const String chipIDString = String(chipID);
+
+ 
+#endif
+
+Settings settings;
 bool firstRun = true;
 
 //Commented out for users without batteries
@@ -131,6 +147,7 @@ bool firstRun = true;
 
 //Perform initial setup on power on
 void setup() {
+
     //Init pins for LED
     pinMode(PIN_RED1, OUTPUT);
     pinMode(PIN_GREEN1, OUTPUT);
@@ -234,8 +251,10 @@ void loop() {
                 changeState(STATE_CONNECTING_TO_SWITCHER);
             } else if (firstRun) {
                 firstRun = false;
-                Serial.println("Unable to connect. Serving \"Tally Light setup\" WiFi for configuration, while still trying to connect...");
-                WiFi.softAP("Tally Light setup");
+                Serial.println("Unable to connect. Serving SETUP WiFi for configuration, while still trying to connect...");
+                Serial.println(WiFi.softAP(chipIDString + " TLight Setup", "connetti") ? "Ready" : "Failed");
+                Serial.println("SSID: " + chipIDString + " TLight Setup");
+                Serial.println("PASS: connetti");
                 WiFi.mode(WIFI_AP_STA); // Enable softAP to access web interface in case of no WiFi
                 setBothLEDs(LED_WHITE);
                 setStatusLED(LED_WHITE);
@@ -809,6 +828,9 @@ String getSSID() {
     return WiFi.SSID();
 #endif
 }
+
+
+
 
 //Commented out for userst without batteries - Also timer is not done properly
 //Main loop for things that should work every second
